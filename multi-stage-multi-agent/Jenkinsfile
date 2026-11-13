@@ -15,13 +15,13 @@ pipeline {
                     echo "Creating Java application..."
 
                     cat > Hello.java <<'EOF'
-                    public class Hello {
-                        public static void main(String[] args) {
-                            System.out.println("Hello from Java Application!");
-                            System.out.println("Running inside Jenkins Docker Agent.");
-                        }
-                    }
-                    EOF
+public class Hello {
+    public static void main(String[] args) {
+        System.out.println("Hello from Java Application!");
+        System.out.println("Running inside Jenkins Docker Agent.");
+    }
+}
+EOF
 
                     echo "Compiling Java application..."
                     javac Hello.java
@@ -44,10 +44,10 @@ pipeline {
                     echo "Creating Node.js application..."
 
                     cat > app.js <<'EOF'
-                    const message = "Hello from Node.js Application!";
-                    console.log(message);
-                    console.log("Running inside Jenkins Docker Agent.");
-                    EOF
+const message = "Hello from Node.js Application!";
+console.log(message);
+console.log("Running inside Jenkins Docker Agent.");
+EOF
 
                     echo "Running Node.js application..."
                     node app.js
