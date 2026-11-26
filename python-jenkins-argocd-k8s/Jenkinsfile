@@ -3,8 +3,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_TAG = "${BUILD_NUMBER}"
         DOCKER_IMAGE = "shravansp9/todo-app"
+        GITOPS_REPO = "https://github.com/shravankundapur/Jenkins-Zero-To-Hero.git"
     }
 
     stages {
@@ -19,30 +19,44 @@ pipeline {
 
         stage('Build Docker') {
             steps {
-                script {
+                sh 'docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    passwordVariable: 'DOCKER_PASSWORD',
+                    usernameVariable: 'DOCKER_USERNAME'
+                )]) {
                     sh '''
-                    echo 'Build Docker Image'
-                    docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                        docker logout
                     '''
                 }
             }
         }
 
-        stage('Push the artifacts') {
+        stage('Update GitOps Manifest') {
             steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        passwordVariable: 'DOCKER_PASSWORD',
-                        usernameVariable: 'DOCKER_USERNAME'
-                    )]) {
-                        sh '''
-                        echo 'Push to Docker Hub'
-                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                        docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
-                        docker logout
-                        '''
-                    }
+                dir('gitops') {
+
+                    git credentialsId: 'github-credentials',
+                        url: "${GITOPS_REPO}",
+                        branch: 'main'
+
+                    sh '''
+                        sed -i "s|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${BUILD_NUMBER}|" python-jenkins-argocd-k8s/deploy/deploy.yaml
+
+                        git config user.name "jenkins"
+                        git config user.email "jenkins@example.com"
+
+                        git add python-jenkins-argocd-k8s/deploy/deploy.yaml
+                        git commit -m "Update Todo image to ${BUILD_NUMBER}"
+                        git push origin main
+                    '''
                 }
             }
         }
