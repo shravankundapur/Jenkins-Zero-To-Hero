@@ -55,8 +55,33 @@ pipeline {
 
                         git add python-jenkins-argocd-k8s/deploy/deploy.yaml
                         git commit -m "Update Todo image to ${BUILD_NUMBER}"
-                        git push origin main
                     '''
+
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-gitops-write',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )]) {
+                        sh '''
+                            set +x
+
+                            cat > git-askpass.sh <<'EOF'
+#!/bin/sh
+case "$1" in
+    *Username*) echo "$GIT_USERNAME" ;;
+    *Password*) echo "$GIT_PASSWORD" ;;
+esac
+EOF
+
+                            chmod 700 git-askpass.sh
+
+                            trap 'rm -f git-askpass.sh' EXIT
+
+                            GIT_ASKPASS=./git-askpass.sh \
+                            GIT_TERMINAL_PROMPT=0 \
+                            git push origin main
+                        '''
+                    }
                 }
             }
         }
